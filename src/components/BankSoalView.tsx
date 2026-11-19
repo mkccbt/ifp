@@ -1,6 +1,6 @@
 import { useState, FormEvent } from 'react';
 import { Plus, Trash2, Search } from 'lucide-react';
-import { QuizQuestion, SubjectId, SubjectInfo } from '../types';
+import { QuizQuestion, Semester, SemesterFilter, SubjectId, SubjectInfo } from '../types';
 import { soundFX } from '../utils/sound';
 
 interface BankSoalViewProps {
@@ -17,12 +17,14 @@ export function BankSoalView({
   onDeleteCustomQuestion,
 }: BankSoalViewProps) {
   const [filterSubject, setFilterSubject] = useState<SubjectId | 'ALL'>('ALL');
+  const [filterSemester, setFilterSemester] = useState<SemesterFilter>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
   const [showAddForm, setShowAddForm] = useState(false);
 
   // Add form state
   const [subjectId, setSubjectId] = useState<SubjectId>('matematika');
-  const [topic, setTopic] = useState(subjects[0].topics[0]);
+  const [semester, setSemester] = useState<Semester>(1);
+  const [topic, setTopic] = useState(subjects[0].topicsBySemester[1][0]);
   const [prompt, setPrompt] = useState('');
   const [optA, setOptA] = useState('');
   const [optB, setOptB] = useState('');
@@ -32,13 +34,19 @@ export function BankSoalView({
   const [explanation, setExplanation] = useState('');
 
   const selectedSubjectInfo = subjects.find((s) => s.id === subjectId) || subjects[0];
+  const formTopics = selectedSubjectInfo.topicsBySemester[semester];
 
   const handleSubjectChange = (newId: SubjectId) => {
     setSubjectId(newId);
     const info = subjects.find((s) => s.id === newId);
-    if (info && info.topics.length > 0) {
-      setTopic(info.topics[0]);
+    if (info) {
+      setTopic(info.topicsBySemester[semester][0]);
     }
+  };
+
+  const handleSemesterChange = (newSem: Semester) => {
+    setSemester(newSem);
+    setTopic(selectedSubjectInfo.topicsBySemester[newSem][0]);
   };
 
   const handleSubmit = (e: FormEvent) => {
@@ -50,7 +58,8 @@ export function BankSoalView({
     const newQ: QuizQuestion = {
       id: `custom-${Date.now()}`,
       subjectId,
-      topic: topic || selectedSubjectInfo.topics[0],
+      semester,
+      topic: topic || formTopics[0],
       prompt: prompt.trim(),
       options: [optA.trim(), optB.trim(), optC.trim(), optD.trim()],
       correctIndex,
@@ -69,15 +78,17 @@ export function BankSoalView({
     setExplanation('');
     setShowAddForm(false);
     setFilterSubject(subjectId);
+    setFilterSemester(semester);
   };
 
   const filteredQuestions = questions.filter((q) => {
     const matchSubject = filterSubject === 'ALL' || q.subjectId === filterSubject;
+    const matchSemester = filterSemester === 'ALL' || q.semester === filterSemester;
     const matchSearch =
       !searchQuery.trim() ||
       q.prompt.toLowerCase().includes(searchQuery.toLowerCase()) ||
       q.topic.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchSubject && matchSearch;
+    return matchSubject && matchSemester && matchSearch;
   });
 
   return (
@@ -88,7 +99,7 @@ export function BankSoalView({
             Bank Soal Guru Kelas V
           </h1>
           <p className="text-sm text-slate-600 mt-1">
-            Lihat seluruh daftar soal beserta kunci pembahasan, atau tambahkan soal buatan Anda sendiri.
+            Kelola daftar soal Semester 1 dan Semester 2 beserta kunci pembahasan, atau tambahkan soal baru.
           </p>
         </div>
 
@@ -115,7 +126,7 @@ export function BankSoalView({
             Buat Soal Tambahan (Tersimpan di Perangkat)
           </h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label htmlFor="q-subject" className="block text-xs font-semibold text-slate-700 mb-1.5">
                 Mata Pelajaran
@@ -134,8 +145,22 @@ export function BankSoalView({
               </select>
             </div>
             <div>
+              <label htmlFor="q-semester" className="block text-xs font-semibold text-slate-700 mb-1.5">
+                Semester
+              </label>
+              <select
+                id="q-semester"
+                value={semester}
+                onChange={(e) => handleSemesterChange(Number(e.target.value) as Semester)}
+                className="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-sm bg-white"
+              >
+                <option value={1}>Semester 1 (Ganjil)</option>
+                <option value={2}>Semester 2 (Genap)</option>
+              </select>
+            </div>
+            <div>
               <label htmlFor="q-topic" className="block text-xs font-semibold text-slate-700 mb-1.5">
-                Topik / Bab
+                Tema / Bab
               </label>
               <select
                 id="q-topic"
@@ -143,7 +168,7 @@ export function BankSoalView({
                 onChange={(e) => setTopic(e.target.value)}
                 className="w-full px-3 py-2.5 rounded-lg border border-slate-300 text-sm bg-white"
               >
-                {selectedSubjectInfo.topics.map((t) => (
+                {formTopics.map((t) => (
                   <option key={t} value={t}>
                     {t}
                   </option>
@@ -230,57 +255,87 @@ export function BankSoalView({
         </form>
       )}
 
-      {/* Filter Tabs + Search */}
-      <div className="mt-6 flex flex-col lg:flex-row lg:items-center justify-between gap-4">
-        <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-xl">
-          <button
-            type="button"
-            onClick={() => {
-              soundFX.playClick();
-              setFilterSubject('ALL');
-            }}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
-              filterSubject === 'ALL'
-                ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                : 'text-slate-600 hover:text-slate-900'
-            }`}
-          >
-            Semua ({questions.length})
-          </button>
-          {subjects.map((s) => {
-            const count = questions.filter((q) => q.subjectId === s.id).length;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => {
-                  soundFX.playClick();
-                  setFilterSubject(s.id);
-                }}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
-                  filterSubject === s.id
-                    ? 'bg-white text-slate-900 shadow-xs font-semibold'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                {s.shortName} ({count})
-              </button>
-            );
-          })}
-        </div>
+      {/* Filter Tabs + Semester Filter + Search */}
+      <div className="mt-6 flex flex-col gap-3">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-1 p-1 bg-slate-100 rounded-xl">
+            <button
+              type="button"
+              onClick={() => {
+                soundFX.playClick();
+                setFilterSubject('ALL');
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
+                filterSubject === 'ALL'
+                  ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              Semua Mapel ({questions.length})
+            </button>
+            {subjects.map((s) => {
+              const count = questions.filter((q) => q.subjectId === s.id).length;
+              return (
+                <button
+                  key={s.id}
+                  type="button"
+                  onClick={() => {
+                    soundFX.playClick();
+                    setFilterSubject(s.id);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
+                    filterSubject === s.id
+                      ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {s.shortName} ({count})
+                </button>
+              );
+            })}
+          </div>
 
-        <div className="relative w-full lg:w-72">
-          <Search
-            className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
-            aria-hidden="true"
-          />
-          <input
-            type="search"
-            placeholder="Cari pertanyaan atau topik..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-blue-600"
-          />
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-1 p-1 bg-slate-100 rounded-xl">
+              {(
+                [
+                  { value: 'ALL', label: 'Semua Sem.' },
+                  { value: 1, label: 'Sem. 1' },
+                  { value: 2, label: 'Sem. 2' },
+                ] as const
+              ).map((sem) => (
+                <button
+                  key={String(sem.value)}
+                  type="button"
+                  onClick={() => {
+                    soundFX.playClick();
+                    setFilterSemester(sem.value);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
+                    filterSemester === sem.value
+                      ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {sem.label}
+                </button>
+              ))}
+            </div>
+
+            <div className="relative w-full sm:w-64">
+              <Search
+                className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2"
+                aria-hidden="true"
+              />
+              <input
+                type="search"
+                placeholder="Cari pertanyaan atau tema..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-blue-600"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -303,6 +358,8 @@ export function BankSoalView({
                     <span className="tabular-nums">#{index + 1}</span>
                     <span className="mx-1.5" aria-hidden="true">·</span>
                     <span className="text-slate-700 font-semibold">{subj?.shortName}</span>
+                    <span className="mx-1.5" aria-hidden="true">·</span>
+                    <span>Semester {q.semester}</span>
                     <span className="mx-1.5" aria-hidden="true">·</span>
                     <span>{q.topic}</span>
                     {q.isCustom && (

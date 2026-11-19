@@ -5,7 +5,15 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { DEFAULT_QUESTIONS, SORT_CHALLENGES, SUBJECTS } from './data/curriculum';
-import { GameMode, QuizQuestion, SessionConfig, SubjectId, SubjectInfo, TimerOption } from './types';
+import {
+  GameMode,
+  QuizQuestion,
+  SemesterFilter,
+  SessionConfig,
+  SubjectId,
+  SubjectInfo,
+  TimerOption,
+} from './types';
 import { TopBar, AppRoute } from './components/TopBar';
 import { HomeView } from './components/HomeView';
 import { SubjectSetupModal } from './components/SubjectSetupModal';
@@ -16,9 +24,11 @@ import { BankSoalView } from './components/BankSoalView';
 import { soundFX } from './utils/sound';
 
 const CUSTOM_QUESTIONS_STORAGE_KEY = 'papanpintar_v_custom_questions_v1';
+const VALID_SUBJECT_IDS = new Set<string>(SUBJECTS.map((s) => s.id));
 
 export default function App() {
   const [route, setRoute] = useState<AppRoute>('home');
+  const [selectedSemester, setSelectedSemester] = useState<SemesterFilter>('ALL');
   const [defaultTimer, setDefaultTimer] = useState<TimerOption>(30);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -26,7 +36,14 @@ export default function App() {
   const [customQuestions, setCustomQuestions] = useState<QuizQuestion[]>(() => {
     try {
       const saved = window.localStorage.getItem(CUSTOM_QUESTIONS_STORAGE_KEY);
-      return saved ? (JSON.parse(saved) as QuizQuestion[]) : [];
+      if (!saved) return [];
+      const parsed = JSON.parse(saved) as Array<QuizQuestion & { subjectId: string }>;
+      return parsed
+        .filter((q) => VALID_SUBJECT_IDS.has(q.subjectId))
+        .map((q) => ({
+          ...q,
+          semester: q.semester === 2 ? 2 : 1,
+        }));
     } catch {
       return [];
     }
@@ -44,20 +61,21 @@ export default function App() {
     [customQuestions]
   );
 
-  const questionCounts = useMemo(() => {
+  const questionCountsBySubject = useMemo(() => {
     const counts: Record<SubjectId, number> = {
       matematika: 0,
       ipas: 0,
       bahasa_indonesia: 0,
       pancasila: 0,
-      bahasa_inggris: 0,
       seni_budaya: 0,
     };
     allQuestions.forEach((q) => {
-      counts[q.subjectId] = (counts[q.subjectId] || 0) + 1;
+      if (selectedSemester === 'ALL' || q.semester === selectedSemester) {
+        counts[q.subjectId] = (counts[q.subjectId] || 0) + 1;
+      }
     });
     return counts;
-  }, [allQuestions]);
+  }, [allQuestions, selectedSemester]);
 
   useEffect(() => {
     const handleFsChange = () => {
@@ -110,10 +128,11 @@ export default function App() {
     setRoute('playing');
   };
 
-  const handleQuickPlay = (subjectId: SubjectId, mode: GameMode) => {
+  const handleQuickPlay = (subjectId: SubjectId, mode: GameMode, topic = 'ALL') => {
     startSession({
       subjectId,
-      topic: 'ALL',
+      semester: selectedSemester,
+      topic,
       mode,
       timerSeconds: defaultTimer,
       teamRedName: 'Tim Merah',
@@ -124,7 +143,7 @@ export default function App() {
 
   const handleRandomPlay = () => {
     const randomSubject = SUBJECTS[Math.floor(Math.random() * SUBJECTS.length)];
-    handleQuickPlay(randomSubject.id, 'kuis');
+    handleQuickPlay(randomSubject.id, 'kuis', 'ALL');
   };
 
   const activeSubject = activeSession
@@ -135,6 +154,7 @@ export default function App() {
     if (!activeSession) return [];
     return allQuestions.filter((q) => {
       if (q.subjectId !== activeSession.subjectId) return false;
+      if (activeSession.semester !== 'ALL' && q.semester !== activeSession.semester) return false;
       if (activeSession.topic !== 'ALL' && q.topic !== activeSession.topic) return false;
       return true;
     });
@@ -142,9 +162,18 @@ export default function App() {
 
   const sessionSortChallenge = useMemo(() => {
     if (!activeSession) return null;
-    return (
-      SORT_CHALLENGES.find((c) => c.subjectId === activeSession.subjectId) || SORT_CHALLENGES[0]
+    const candidates = SORT_CHALLENGES.filter(
+      (c) =>
+        c.subjectId === activeSession.subjectId &&
+        (activeSession.semester === 'ALL' || c.semester === activeSession.semester)
     );
+    if (candidates.length === 0) {
+      return (
+        SORT_CHALLENGES.find((c) => c.subjectId === activeSession.subjectId) || SORT_CHALLENGES[0]
+      );
+    }
+    if (candidates.length === 1) return candidates[0];
+    return candidates[Math.floor(Math.random() * candidates.length)];
   }, [activeSession]);
 
   return (
@@ -163,7 +192,9 @@ export default function App() {
         {route === 'home' && (
           <HomeView
             subjects={SUBJECTS}
-            questionCounts={questionCounts}
+            selectedSemester={selectedSemester}
+            onChangeSemester={setSelectedSemester}
+            questionCountsBySubject={questionCountsBySubject}
             defaultTimer={defaultTimer}
             onChangeDefaultTimer={setDefaultTimer}
             isMuted={isMuted}
@@ -179,7 +210,9 @@ export default function App() {
         {route === 'duel_picker' && (
           <HomeView
             subjects={SUBJECTS}
-            questionCounts={questionCounts}
+            selectedSemester={selectedSemester}
+            onChangeSemester={setSelectedSemester}
+            questionCountsBySubject={questionCountsBySubject}
             defaultTimer={defaultTimer}
             onChangeDefaultTimer={setDefaultTimer}
             isMuted={isMuted}
@@ -194,7 +227,9 @@ export default function App() {
         {route === 'sortir_picker' && (
           <HomeView
             subjects={SUBJECTS}
-            questionCounts={questionCounts}
+            selectedSemester={selectedSemester}
+            onChangeSemester={setSelectedSemester}
+            questionCountsBySubject={questionCountsBySubject}
             defaultTimer={defaultTimer}
             onChangeDefaultTimer={setDefaultTimer}
             isMuted={isMuted}
@@ -271,7 +306,7 @@ export default function App() {
         <footer className="border-t border-slate-200 bg-white mt-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
             <span>PapanPintar Kelas V · Media Belajar Interaktif Papan Sentuh (IFP)</span>
-            <span>6 Mata Pelajaran SD · Kurikulum Merdeka</span>
+            <span>5 Mata Pelajaran SD · Semester 1 &amp; Semester 2</span>
           </div>
         </footer>
       )}
@@ -280,8 +315,11 @@ export default function App() {
         <SubjectSetupModal
           subject={setupModalState.subject}
           initialMode={setupModalState.initialMode}
+          initialSemester={selectedSemester}
           defaultTimer={defaultTimer}
-          questionCountAvailable={questionCounts[setupModalState.subject.id]}
+          subjectQuestions={allQuestions.filter(
+            (q) => q.subjectId === setupModalState.subject.id
+          )}
           onClose={() => setSetupModalState(null)}
           onStart={startSession}
         />

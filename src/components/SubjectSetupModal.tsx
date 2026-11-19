@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { X, Users, Layers, MonitorPlay, Clock } from 'lucide-react';
-import { GameMode, SessionConfig, SubjectInfo, TimerOption } from '../types';
+import { GameMode, QuizQuestion, SemesterFilter, SessionConfig, SubjectInfo, TimerOption } from '../types';
 import { soundFX } from '../utils/sound';
 
 interface SubjectSetupModalProps {
   subject: SubjectInfo;
   initialMode?: GameMode;
+  initialSemester?: SemesterFilter;
   defaultTimer: TimerOption;
-  questionCountAvailable: number;
+  subjectQuestions: QuizQuestion[];
   onClose: () => void;
   onStart: (config: SessionConfig) => void;
 }
@@ -15,11 +16,13 @@ interface SubjectSetupModalProps {
 export function SubjectSetupModal({
   subject,
   initialMode = 'kuis',
+  initialSemester = 'ALL',
   defaultTimer,
-  questionCountAvailable,
+  subjectQuestions,
   onClose,
   onStart,
 }: SubjectSetupModalProps) {
+  const [semester, setSemester] = useState<SemesterFilter>(initialSemester);
   const [selectedTopic, setSelectedTopic] = useState<string>('ALL');
   const [mode, setMode] = useState<GameMode>(initialMode);
   const [timerSeconds, setTimerSeconds] = useState<TimerOption>(defaultTimer);
@@ -52,6 +55,12 @@ export function SubjectSetupModal({
     },
   ];
 
+  const semesterOptions: Array<{ value: SemesterFilter; label: string }> = [
+    { value: 'ALL', label: 'Semua Semester' },
+    { value: 1, label: 'Semester 1 (Ganjil)' },
+    { value: 2, label: 'Semester 2 (Genap)' },
+  ];
+
   const timerOptions: Array<{ value: TimerOption; label: string }> = [
     { value: 0, label: 'Tanpa Timer' },
     { value: 20, label: '20 Detik' },
@@ -59,10 +68,28 @@ export function SubjectSetupModal({
     { value: 45, label: '45 Detik' },
   ];
 
+  const filteredBySemester = subjectQuestions.filter(
+    (q) => semester === 'ALL' || q.semester === semester
+  );
+
+  const availableTopics =
+    semester === 1
+      ? subject.topicsBySemester[1]
+      : semester === 2
+        ? subject.topicsBySemester[2]
+        : [...subject.topicsBySemester[1], ...subject.topicsBySemester[2]];
+
+  const handleSemesterChange = (nextSemester: SemesterFilter) => {
+    soundFX.playClick();
+    setSemester(nextSemester);
+    setSelectedTopic('ALL');
+  };
+
   const handleLaunch = () => {
     soundFX.playClick();
     onStart({
       subjectId: subject.id,
+      semester,
       topic: mode === 'sortir' ? 'ALL' : selectedTopic,
       mode,
       timerSeconds,
@@ -138,11 +165,34 @@ export function SubjectSetupModal({
             </div>
           </div>
 
+          {/* Semester selection */}
+          <div>
+            <label className="block text-sm font-semibold text-slate-800 mb-2.5">
+              2. Pilih Semester
+            </label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 p-1 bg-slate-100 rounded-xl">
+              {semesterOptions.map((opt) => (
+                <button
+                  key={String(opt.value)}
+                  type="button"
+                  onClick={() => handleSemesterChange(opt.value)}
+                  className={`ifp-touch-target py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap cursor-pointer ${
+                    semester === opt.value
+                      ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
           {/* Topic selection (for Kuis and Duel) */}
           {mode !== 'sortir' && (
             <div>
               <label className="block text-sm font-semibold text-slate-800 mb-2.5">
-                2. Pilih Bab / Topik Materi
+                3. Pilih Tema / Bab Materi
               </label>
               <div className="flex flex-wrap gap-2">
                 <button
@@ -157,9 +207,9 @@ export function SubjectSetupModal({
                       : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
                   }`}
                 >
-                  Semua Topik ({questionCountAvailable} Soal)
+                  Semua Tema ({filteredBySemester.length} Soal)
                 </button>
-                {subject.topics.map((topic) => (
+                {availableTopics.map((topic) => (
                   <button
                     key={topic}
                     type="button"
@@ -185,7 +235,7 @@ export function SubjectSetupModal({
             <div>
               <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 mb-2.5">
                 <Clock className="w-4 h-4 text-slate-500" aria-hidden="true" />
-                <span>3. Pengaturan Waktu Per Soal</span>
+                <span>4. Pengaturan Waktu Per Soal</span>
               </label>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1 bg-slate-100 rounded-xl">
                 {timerOptions.map((opt) => (

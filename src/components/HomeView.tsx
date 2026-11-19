@@ -4,7 +4,6 @@ import {
   FlaskConical,
   BookOpen,
   ShieldCheck,
-  Languages,
   Palette,
   Volume2,
   VolumeX,
@@ -12,18 +11,20 @@ import {
   SlidersHorizontal,
   Play,
 } from 'lucide-react';
-import { GameMode, SubjectId, SubjectInfo, TimerOption } from '../types';
+import { GameMode, SemesterFilter, SubjectId, SubjectInfo, TimerOption } from '../types';
 import { soundFX } from '../utils/sound';
 
 interface HomeViewProps {
   subjects: SubjectInfo[];
-  questionCounts: Record<SubjectId, number>;
+  selectedSemester: SemesterFilter;
+  onChangeSemester: (semester: SemesterFilter) => void;
+  questionCountsBySubject: Record<SubjectId, number>;
   defaultTimer: TimerOption;
   onChangeDefaultTimer: (timer: TimerOption) => void;
   isMuted: boolean;
   onToggleMute: () => void;
   presetMode?: GameMode;
-  onQuickPlay: (subjectId: SubjectId, mode: GameMode) => void;
+  onQuickPlay: (subjectId: SubjectId, mode: GameMode, topic?: string) => void;
   onOpenSetup: (subject: SubjectInfo, initialMode?: GameMode) => void;
   onRandomPlay: () => void;
 }
@@ -33,13 +34,14 @@ const SUBJECT_ICONS: Record<SubjectId, typeof Calculator> = {
   ipas: FlaskConical,
   bahasa_indonesia: BookOpen,
   pancasila: ShieldCheck,
-  bahasa_inggris: Languages,
   seni_budaya: Palette,
 };
 
 export function HomeView({
   subjects,
-  questionCounts,
+  selectedSemester,
+  onChangeSemester,
+  questionCountsBySubject,
   defaultTimer,
   onChangeDefaultTimer,
   isMuted,
@@ -58,19 +60,25 @@ export function HomeView({
     { value: 45, label: '45 dtk' },
   ];
 
+  const semesterOptions: Array<{ value: SemesterFilter; label: string }> = [
+    { value: 'ALL', label: 'Semua Semester' },
+    { value: 1, label: 'Semester 1 (Ganjil)' },
+    { value: 2, label: 'Semester 2 (Genap)' },
+  ];
+
   const modeHeading =
     presetMode === 'duel'
-      ? 'Pilih Pelajaran untuk Duel 2 Tim (Layar Belah)'
+      ? 'Pilih Pelajaran & Tema Duel 2 Tim'
       : presetMode === 'sortir'
-        ? 'Pilih Pelajaran untuk Permainan Sortir Cepat'
-        : 'Pilih Mata Pelajaran Kelas V';
+        ? 'Pilih Pelajaran & Tema Sortir Cepat'
+        : 'Pilih Mata Pelajaran & Tema Kelas V';
 
   const modeSubheading =
     presetMode === 'duel'
-      ? 'Dua siswa berdiri di sisi kiri dan kanan papan sentuh untuk adu cepat menjawab soal.'
+      ? 'Pilih semester lalu sentuh pelajaran atau tema yang ingin ditandingkan di layar belah.'
       : presetMode === 'sortir'
-        ? 'Siswa mengelompokkan kartu konsep ke dua keranjang kategori yang tepat secara interaktif.'
-        : 'Sentuh Main Langsung untuk segera memulai kuis papan kelas, atau Atur Mode untuk duel dan sortir.';
+        ? 'Pilih semester untuk memainkan sortir kartu konsep yang sesuai dengan materi kelas.'
+        : 'Pilih Semester 1 atau Semester 2, lalu sentuh tema pelajaran untuk langsung bermain.';
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 space-y-10">
@@ -80,7 +88,7 @@ export function HomeView({
           <div className="lg:col-span-7 bg-white border border-slate-200 rounded-2xl p-6 sm:p-8 flex flex-col justify-between">
             <div>
               <p className="text-xs sm:text-sm font-semibold text-blue-700">
-                Kurikulum Merdeka · Kelas V Sekolah Dasar
+                Kurikulum Merdeka · Kelas V SD · Semester 1 &amp; 2
               </p>
               <h1
                 className="font-display font-extrabold text-slate-900 tracking-tight mt-2"
@@ -89,7 +97,7 @@ export function HomeView({
                 Belajar Sambil Bermain di Papan Interaktif Kelas V
               </h1>
               <p className="text-slate-600 text-base leading-relaxed mt-3 max-w-2xl">
-                Dirancang khusus untuk guru kelas dan layar sentuh IFP. Tinggal pilih mata
+                Dirancang khusus untuk guru kelas dan layar sentuh IFP. Pilih semester dan tema
                 pelajaran, lalu ajak siswa bermain kuis klasikal, duel dua tim, atau sortir materi.
               </p>
             </div>
@@ -166,7 +174,7 @@ export function HomeView({
                   Siap Digunakan di Papan Sentuh
                 </div>
                 <p className="text-sm text-slate-600 mt-1">
-                  6 Mata Pelajaran Kelas V Kurikulum Merdeka
+                  5 Mata Pelajaran Kelas V · Semester 1 &amp; 2
                 </p>
               </div>
             )}
@@ -174,9 +182,9 @@ export function HomeView({
         </section>
       )}
 
-      {/* Subject Selection Grid */}
+      {/* Subject & Semester Selection Section */}
       <section aria-labelledby="subjects-heading">
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-2 mb-5">
+        <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-4 mb-6">
           <div>
             <h2
               id="subjects-heading"
@@ -186,13 +194,45 @@ export function HomeView({
             </h2>
             <p className="text-sm text-slate-600 mt-1">{modeSubheading}</p>
           </div>
+
+          {/* Interactive Semester Segmented Control */}
+          <div
+            className="inline-flex items-center gap-1 p-1 bg-slate-100 rounded-xl self-start lg:self-auto"
+            role="group"
+            aria-label="Filter Semester"
+          >
+            {semesterOptions.map((opt) => (
+              <button
+                key={String(opt.value)}
+                type="button"
+                onClick={() => {
+                  soundFX.playClick();
+                  onChangeSemester(opt.value);
+                }}
+                className={`ifp-touch-target px-3.5 py-2 text-xs sm:text-sm font-medium rounded-lg transition-all whitespace-nowrap shrink-0 cursor-pointer ${
+                  selectedSemester === opt.value
+                    ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                    : 'text-slate-600 hover:text-slate-900'
+                }`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
           {subjects.map((subject) => {
             const Icon = SUBJECT_ICONS[subject.id];
-            const totalQ = questionCounts[subject.id] || 0;
+            const totalQ = questionCountsBySubject[subject.id] || 0;
             const targetMode: GameMode = presetMode ?? 'kuis';
+
+            const activeTopics =
+              selectedSemester === 1
+                ? subject.topicsBySemester[1]
+                : selectedSemester === 2
+                  ? subject.topicsBySemester[2]
+                  : [...subject.topicsBySemester[1], ...subject.topicsBySemester[2]];
 
             return (
               <article
@@ -200,7 +240,7 @@ export function HomeView({
                 className="bg-white border border-slate-200 rounded-2xl p-6 flex flex-col justify-between hover:border-slate-300 transition-colors"
               >
                 <div>
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center justify-between gap-3">
                     <div
                       className="w-12 h-12 rounded-xl flex items-center justify-center shrink-0 border"
                       style={{
@@ -210,6 +250,16 @@ export function HomeView({
                       }}
                     >
                       <Icon className="w-6 h-6" aria-hidden="true" />
+                    </div>
+
+                    <div className="text-xs text-slate-500 font-medium text-right">
+                      <span>
+                        {selectedSemester === 'ALL'
+                          ? 'Sem. 1 & 2'
+                          : `Semester ${selectedSemester}`}
+                      </span>
+                      <span className="mx-1.5" aria-hidden="true">·</span>
+                      <span className="tabular-nums">{totalQ} Soal</span>
                     </div>
                   </div>
 
@@ -221,31 +271,60 @@ export function HomeView({
                     {subject.description}
                   </p>
 
-                  <div className="mt-3 text-xs text-slate-500 font-medium">
-                    <span>{subject.topics.length} Topik</span>
-                    <span className="mx-1.5" aria-hidden="true">·</span>
-                    <span className="tabular-nums">{totalQ} Soal</span>
-                    <span className="mx-1.5" aria-hidden="true">·</span>
-                    <span>Kuis, Duel & Sortir</span>
-                  </div>
+                  {/* Interactive Theme Quick-Launch List */}
+                  {presetMode !== 'sortir' ? (
+                    <div className="mt-4 pt-3.5 border-t border-slate-100">
+                      <div className="text-xs font-semibold text-slate-500 mb-2">
+                        {selectedSemester === 'ALL'
+                          ? 'Tema Semester 1 & 2 (sentuh untuk mulai):'
+                          : `Tema Semester ${selectedSemester} (sentuh untuk mulai):`}
+                      </div>
+                      <div className="flex flex-col gap-1.5">
+                        {activeTopics.map((topic) => (
+                          <button
+                            key={topic}
+                            type="button"
+                            onClick={() => {
+                              soundFX.playClick();
+                              onQuickPlay(subject.id, targetMode, topic);
+                            }}
+                            className="ifp-touch-target w-full text-left px-3 py-2 rounded-lg border border-slate-200 bg-slate-50/70 hover:bg-blue-50 hover:border-blue-300 text-xs sm:text-sm font-medium text-slate-800 flex items-center justify-between gap-2 transition-colors cursor-pointer"
+                          >
+                            <span className="truncate">{topic}</span>
+                            <Play className="w-3.5 h-3.5 text-blue-700 shrink-0" aria-hidden="true" />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="mt-4 pt-3.5 border-t border-slate-100 text-xs text-slate-500">
+                      <span>
+                        {selectedSemester === 2
+                          ? `Tema Sortir: ${subject.topicsBySemester[2][0]}`
+                          : selectedSemester === 1
+                            ? `Tema Sortir: ${subject.topicsBySemester[1][0]}`
+                            : 'Tersedia tantangan sortir Semester 1 & 2'}
+                      </span>
+                    </div>
+                  )}
                 </div>
 
-                <div className="mt-6 pt-4 border-t border-slate-100 flex items-center gap-2.5">
+                <div className="mt-5 pt-4 border-t border-slate-100 flex items-center gap-2.5">
                   <button
                     type="button"
                     onClick={() => {
                       soundFX.playClick();
-                      onQuickPlay(subject.id, targetMode);
+                      onQuickPlay(subject.id, targetMode, 'ALL');
                     }}
                     className="ifp-touch-target flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-blue-700 text-white text-sm font-semibold hover:bg-blue-800 active:scale-[0.98] transition-all cursor-pointer whitespace-nowrap"
                   >
                     <Play className="w-4 h-4 fill-current" aria-hidden="true" />
                     <span>
                       {presetMode === 'duel'
-                        ? 'Mulai Duel'
+                        ? 'Duel Semua Tema'
                         : presetMode === 'sortir'
                           ? 'Mulai Sortir'
-                          : 'Main Langsung'}
+                          : 'Main Semua Tema'}
                     </span>
                   </button>
                   <button
@@ -254,7 +333,7 @@ export function HomeView({
                       soundFX.playClick();
                       onOpenSetup(subject, targetMode);
                     }}
-                    aria-label={`Atur mode dan topik ${subject.name}`}
+                    aria-label={`Atur mode dan tema ${subject.name}`}
                     className="ifp-touch-target inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white text-slate-700 text-sm font-medium hover:bg-slate-50 cursor-pointer whitespace-nowrap shrink-0"
                   >
                     <SlidersHorizontal className="w-4 h-4" aria-hidden="true" />
@@ -337,8 +416,8 @@ export function HomeView({
                   Sortir Cepat Sentuh
                 </h3>
                 <p className="text-sm text-slate-600 mt-1.5 leading-relaxed">
-                  Pilah kartu konsep ke dua kategori utama seperti Fakta vs Opini, Produsen vs
-                  Konsumen, atau Hak vs Kewajiban.
+                  Pilah kartu konsep Semester 1 dan Semester 2 seperti Majas, Fakta vs Opini,
+                  Produsen vs Konsumen, atau Hak vs Kewajiban.
                 </p>
               </div>
             </div>

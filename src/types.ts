@@ -3,8 +3,10 @@ export type SubjectId =
   | 'ipas'
   | 'bahasa_indonesia'
   | 'pancasila'
-  | 'bahasa_inggris'
   | 'seni_budaya';
+
+export type Semester = 1 | 2;
+export type SemesterFilter = 'ALL' | Semester;
 
 export type GameMode = 'kuis' | 'duel' | 'sortir';
 
@@ -23,6 +25,7 @@ export type VisualDiagramType =
 export interface QuizQuestion {
   id: string;
   subjectId: SubjectId;
+  semester: Semester;
   topic: string;
   prompt: string;
   options: [string, string, string, string];
@@ -43,6 +46,7 @@ export interface SortItem {
 export interface SortChallenge {
   id: string;
   subjectId: SubjectId;
+  semester: Semester;
   title: string;
   instruction: string;
   leftCategory: {
@@ -61,7 +65,10 @@ export interface SubjectInfo {
   name: string;
   shortName: string;
   description: string;
-  topics: string[];
+  topicsBySemester: {
+    1: string[];
+    2: string[];
+  };
   accentColor: string;
   softBg: string;
   borderTint: string;
@@ -70,6 +77,7 @@ export interface SubjectInfo {
 
 export interface SessionConfig {
   subjectId: SubjectId;
+  semester: SemesterFilter;
   topic: string; // 'ALL' or specific topic name
   mode: GameMode;
   timerSeconds: TimerOption;
