@@ -1,0 +1,6 @@
+{
+  "name": "PapanPintar Kelas V",
+  "description": "Aplikasi game edukasi interaktif layar sentuh (IFP) untuk guru dan siswa Kelas V SD Kurikulum Merdeka.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
