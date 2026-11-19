@@ -20,8 +20,12 @@ import { SubjectSetupModal } from './components/SubjectSetupModal';
 import { KuisKlasikalGame } from './components/KuisKlasikalGame';
 import { DuelPapanGame } from './components/DuelPapanGame';
 import { SortirCepatGame } from './components/SortirCepatGame';
+import { UlarTanggaGame } from './components/UlarTanggaGame';
+import { BahanBacaanView } from './components/BahanBacaanView';
+import { AsesmenView } from './components/AsesmenView';
 import { BankSoalView } from './components/BankSoalView';
 import { soundFX } from './utils/sound';
+import { ttsEngine } from './utils/tts';
 
 const CUSTOM_QUESTIONS_STORAGE_KEY = 'papanpintar_v_custom_questions_v1';
 const VALID_SUBJECT_IDS = new Set<string>(SUBJECTS.map((s) => s.id));
@@ -29,6 +33,8 @@ const VALID_SUBJECT_IDS = new Set<string>(SUBJECTS.map((s) => s.id));
 export default function App() {
   const [route, setRoute] = useState<AppRoute>('home');
   const [selectedSemester, setSelectedSemester] = useState<SemesterFilter>('ALL');
+  const [bacaanSubject, setBacaanSubject] = useState<SubjectId>('matematika');
+  const [ularTanggaSubject, setUlarTanggaSubject] = useState<SubjectId>('matematika');
   const [defaultTimer, setDefaultTimer] = useState<TimerOption>(30);
   const [isMuted, setIsMuted] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -123,7 +129,14 @@ export default function App() {
   };
 
   const startSession = (config: SessionConfig) => {
+    ttsEngine.stop();
     setSetupModalState(null);
+    if (config.mode === 'ular_tangga') {
+      setUlarTanggaSubject(config.subjectId);
+      setActiveSession(null);
+      setRoute('ular_tangga');
+      return;
+    }
     setActiveSession(config);
     setRoute('playing');
   };
@@ -139,11 +152,6 @@ export default function App() {
       teamBlueName: 'Tim Biru',
       questionCount: 10,
     });
-  };
-
-  const handleRandomPlay = () => {
-    const randomSubject = SUBJECTS[Math.floor(Math.random() * SUBJECTS.length)];
-    handleQuickPlay(randomSubject.id, 'kuis', 'ALL');
   };
 
   const activeSubject = activeSession
@@ -181,6 +189,7 @@ export default function App() {
       <TopBar
         currentRoute={route}
         onNavigate={(nextRoute) => {
+          ttsEngine.stop();
           setActiveSession(null);
           setRoute(nextRoute);
         }}
@@ -203,42 +212,39 @@ export default function App() {
             onOpenSetup={(subject, mode) =>
               setSetupModalState({ subject, initialMode: mode || 'kuis' })
             }
-            onRandomPlay={handleRandomPlay}
+            onOpenBacaan={(subjectId) => {
+              setBacaanSubject(subjectId);
+              setRoute('bahan_bacaan');
+            }}
+            onOpenUlarTangga={(subjectId) => {
+              if (subjectId) setUlarTanggaSubject(subjectId);
+              setRoute('ular_tangga');
+            }}
+            onOpenAsesmen={() => setRoute('asesmen')}
           />
         )}
 
-        {route === 'duel_picker' && (
-          <HomeView
+        {route === 'bahan_bacaan' && (
+          <BahanBacaanView
             subjects={SUBJECTS}
-            selectedSemester={selectedSemester}
-            onChangeSemester={setSelectedSemester}
-            questionCountsBySubject={questionCountsBySubject}
-            defaultTimer={defaultTimer}
-            onChangeDefaultTimer={setDefaultTimer}
-            isMuted={isMuted}
-            onToggleMute={handleToggleMute}
-            presetMode="duel"
-            onQuickPlay={handleQuickPlay}
-            onOpenSetup={(subject) => setSetupModalState({ subject, initialMode: 'duel' })}
-            onRandomPlay={handleRandomPlay}
+            initialSubjectId={bacaanSubject}
+            initialSemester={selectedSemester === 2 ? 2 : 1}
           />
         )}
 
-        {route === 'sortir_picker' && (
-          <HomeView
+        {route === 'ular_tangga' && (
+          <UlarTanggaGame
             subjects={SUBJECTS}
-            selectedSemester={selectedSemester}
-            onChangeSemester={setSelectedSemester}
-            questionCountsBySubject={questionCountsBySubject}
-            defaultTimer={defaultTimer}
-            onChangeDefaultTimer={setDefaultTimer}
+            allQuestions={allQuestions}
+            initialSubjectId={ularTanggaSubject}
+            initialSemester={selectedSemester}
             isMuted={isMuted}
             onToggleMute={handleToggleMute}
-            presetMode="sortir"
-            onQuickPlay={handleQuickPlay}
-            onOpenSetup={(subject) => setSetupModalState({ subject, initialMode: 'sortir' })}
-            onRandomPlay={handleRandomPlay}
           />
+        )}
+
+        {route === 'asesmen' && (
+          <AsesmenView subjects={SUBJECTS} allQuestions={allQuestions} />
         )}
 
         {route === 'bank_soal' && (
@@ -260,10 +266,12 @@ export default function App() {
                 isMuted={isMuted}
                 onToggleMute={handleToggleMute}
                 onExit={() => {
+                  ttsEngine.stop();
                   setActiveSession(null);
                   setRoute('home');
                 }}
                 onSwitchToDuel={() => {
+                  ttsEngine.stop();
                   setActiveSession({
                     ...activeSession,
                     mode: 'duel',
@@ -280,6 +288,7 @@ export default function App() {
                 isMuted={isMuted}
                 onToggleMute={handleToggleMute}
                 onExit={() => {
+                  ttsEngine.stop();
                   setActiveSession(null);
                   setRoute('home');
                 }}
@@ -293,6 +302,7 @@ export default function App() {
                 isMuted={isMuted}
                 onToggleMute={handleToggleMute}
                 onExit={() => {
+                  ttsEngine.stop();
                   setActiveSession(null);
                   setRoute('home');
                 }}
@@ -305,7 +315,7 @@ export default function App() {
       {route !== 'playing' && (
         <footer className="border-t border-slate-200 bg-white mt-12">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
-            <span>PapanPintar Kelas V · Media Belajar Interaktif Papan Sentuh (IFP)</span>
+            <span>PapanPintar Kelas V · Media Pembelajaran Interaktif Papan Sentuh (IFP)</span>
             <span>5 Mata Pelajaran SD · Semester 1 &amp; Semester 2</span>
           </div>
         </footer>

@@ -10,7 +10,9 @@ import {
 } from 'lucide-react';
 import { QuizQuestion, SessionConfig, SubjectInfo } from '../types';
 import { QuestionVisual } from './QuestionVisual';
+import { SpeakButton } from './SpeakButton';
 import { soundFX } from '../utils/sound';
+import { ttsEngine } from '../utils/tts';
 
 interface DuelPapanGameProps {
   subject: SubjectInfo;
@@ -259,8 +261,16 @@ export function DuelPapanGame({
       <div className="mt-4 bg-white border border-slate-200 rounded-2xl p-5 sm:p-6">
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           <div className="flex-1 text-center md:text-left">
-            <div className="text-xs font-semibold text-slate-500 mb-1">
-              {subject.name} · {currentQuestion.topic}
+            <div className="flex flex-wrap items-center justify-center md:justify-start gap-2.5 mb-1.5">
+              <span className="text-xs font-semibold text-slate-500">
+                {subject.name} · {currentQuestion.topic}
+              </span>
+              <SpeakButton
+                speakId={`duel-${currentQuestion.id}`}
+                text={`${currentQuestion.prompt}. Pilihan A: ${currentQuestion.options[0]}. Pilihan B: ${currentQuestion.options[1]}. Pilihan C: ${currentQuestion.options[2]}. Pilihan D: ${currentQuestion.options[3]}.`}
+                label="Bacakan Soal"
+                compact
+              />
             </div>
             <h2
               className="font-display font-bold text-slate-900 leading-snug"

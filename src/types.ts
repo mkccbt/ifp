@@ -8,7 +8,7 @@ export type SubjectId =
 export type Semester = 1 | 2;
 export type SemesterFilter = 'ALL' | Semester;
 
-export type GameMode = 'kuis' | 'duel' | 'sortir';
+export type GameMode = 'kuis' | 'duel' | 'sortir' | 'ular_tangga';
 
 export type TimerOption = 0 | 20 | 30 | 45;
 

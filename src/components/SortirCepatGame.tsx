@@ -9,7 +9,9 @@ import {
   RotateCcw,
 } from 'lucide-react';
 import { SortChallenge, SortItem, SubjectInfo } from '../types';
+import { SpeakButton } from './SpeakButton';
 import { soundFX } from '../utils/sound';
+import { ttsEngine } from '../utils/tts';
 
 interface SortirCepatGameProps {
   subject: SubjectInfo;
@@ -243,8 +245,16 @@ export function SortirCepatGame({
 
       {/* Active Center Card */}
       <div className="mt-5 bg-white border border-slate-200 rounded-2xl p-8 text-center">
-        <div className="text-xs font-medium text-slate-400 mb-2">
-          Kartu Aktif #{currentIndex + 1}
+        <div className="flex items-center justify-center gap-3 mb-2">
+          <span className="text-xs font-medium text-slate-400">
+            Kartu Aktif #{currentIndex + 1}
+          </span>
+          <SpeakButton
+            speakId={`sort-${currentItem.id}`}
+            text={`${currentItem.label}. Pilih ${challenge.leftCategory.title}, atau ${challenge.rightCategory.title}.`}
+            label="Bacakan Kartu"
+            compact
+          />
         </div>
         <div
           className="font-display font-bold text-slate-900 leading-snug"

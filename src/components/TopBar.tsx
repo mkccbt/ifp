@@ -1,11 +1,18 @@
 import { Maximize2, Minimize2 } from 'lucide-react';
 import { soundFX } from '../utils/sound';
+import { ttsEngine } from '../utils/tts';
 
-export type AppRoute = 'home' | 'duel_picker' | 'sortir_picker' | 'bank_soal' | 'playing';
+export type AppRoute =
+  | 'home'
+  | 'bahan_bacaan'
+  | 'ular_tangga'
+  | 'asesmen'
+  | 'bank_soal'
+  | 'playing';
 
 interface TopBarProps {
   currentRoute: AppRoute;
-  onNavigate: (route: 'home' | 'duel_picker' | 'sortir_picker' | 'bank_soal') => void;
+  onNavigate: (route: Exclude<AppRoute, 'playing'>) => void;
   isFullscreen: boolean;
   onToggleFullscreen: () => void;
 }
@@ -16,22 +23,26 @@ export function TopBar({
   isFullscreen,
   onToggleFullscreen,
 }: TopBarProps) {
-  const navItems: Array<{ id: 'home' | 'duel_picker' | 'sortir_picker' | 'bank_soal'; label: string }> = [
-    { id: 'home', label: 'Pilih Pelajaran' },
-    { id: 'duel_picker', label: 'Duel 2 Tim' },
-    { id: 'sortir_picker', label: 'Sortir Cepat' },
+  const navItems: Array<{ id: Exclude<AppRoute, 'playing'>; label: string }> = [
+    { id: 'home', label: 'Beranda' },
+    { id: 'bahan_bacaan', label: 'Bahan Bacaan' },
+    { id: 'ular_tangga', label: 'Ular Tangga' },
+    { id: 'asesmen', label: 'Asesmen' },
     { id: 'bank_soal', label: 'Bank Soal' },
   ];
+
+  const handleNav = (id: Exclude<AppRoute, 'playing'>) => {
+    soundFX.playClick();
+    ttsEngine.stop();
+    onNavigate(id);
+  };
 
   return (
     <header className="sticky top-0 z-30 bg-white/95 backdrop-blur-sm border-b border-slate-200">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-8">
         <button
           type="button"
-          onClick={() => {
-            soundFX.playClick();
-            onNavigate('home');
-          }}
+          onClick={() => handleNav('home')}
           className="font-display text-lg sm:text-xl font-bold tracking-tight text-slate-900 whitespace-nowrap shrink-0 hover:text-blue-700 transition-colors cursor-pointer"
         >
           PapanPintar V
@@ -44,10 +55,7 @@ export function TopBar({
               <button
                 key={item.id}
                 type="button"
-                onClick={() => {
-                  soundFX.playClick();
-                  onNavigate(item.id);
-                }}
+                onClick={() => handleNav(item.id)}
                 className={`py-1 whitespace-nowrap shrink-0 transition-colors cursor-pointer border-b-2 ${
                   isActive
                     ? 'text-blue-700 border-blue-700 font-semibold'
@@ -92,10 +100,7 @@ export function TopBar({
             <button
               key={item.id}
               type="button"
-              onClick={() => {
-                soundFX.playClick();
-                onNavigate(item.id);
-              }}
+              onClick={() => handleNav(item.id)}
               className={`px-3 py-1.5 rounded-md whitespace-nowrap shrink-0 transition-colors ${
                 isActive
                   ? 'bg-blue-50 text-blue-700 font-semibold'

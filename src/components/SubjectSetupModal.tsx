@@ -1,6 +1,8 @@
 import { useState } from 'react';
-import { X, Users, Layers, MonitorPlay, Clock } from 'lucide-react';
+import { X, Users, Layers, MonitorPlay, Clock, Dices } from 'lucide-react';
 import { GameMode, QuizQuestion, SemesterFilter, SessionConfig, SubjectInfo, TimerOption } from '../types';
+import { LEARNING_OBJECTIVES } from '../data/mpiContent';
+import { SpeakButton } from './SpeakButton';
 import { soundFX } from '../utils/sound';
 
 interface SubjectSetupModalProps {
@@ -53,6 +55,12 @@ export function SubjectSetupModal({
       desc: 'Pilah kartu materi ke dua keranjang kategori yang tepat secara bergantian.',
       icon: Layers,
     },
+    {
+      id: 'ular_tangga',
+      title: 'Ular Tangga Edukasi',
+      desc: 'Lempar dadu dan jawab tantangan soal untuk naik tangga menuju petak 30.',
+      icon: Dices,
+    },
   ];
 
   const semesterOptions: Array<{ value: SemesterFilter; label: string }> = [
@@ -78,6 +86,10 @@ export function SubjectSetupModal({
       : semester === 2
         ? subject.topicsBySemester[2]
         : [...subject.topicsBySemester[1], ...subject.topicsBySemester[2]];
+
+  const relevantObjectives = LEARNING_OBJECTIVES.filter(
+    (tp) => tp.subjectId === subject.id && (semester === 'ALL' || tp.semester === semester)
+  );
 
   const handleSemesterChange = (nextSemester: SemesterFilter) => {
     soundFX.playClick();
@@ -106,7 +118,7 @@ export function SubjectSetupModal({
       aria-modal="true"
       aria-labelledby="setup-modal-title"
     >
-      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl overflow-hidden shadow-xl">
+      <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-3xl overflow-hidden shadow-xl">
         <div className="px-6 py-5 border-b border-slate-200 flex items-center justify-between gap-4">
           <div>
             <p className="text-xs font-medium text-slate-500">
@@ -135,7 +147,7 @@ export function SubjectSetupModal({
             <label className="block text-sm font-semibold text-slate-800 mb-3">
               1. Pilih Mode Permainan IFP
             </label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {modes.map((m) => {
                 const Icon = m.icon;
                 const active = mode === m.id;
@@ -188,8 +200,28 @@ export function SubjectSetupModal({
             </div>
           </div>
 
+          {/* Tujuan Pembelajaran Preview */}
+          <div className="bg-slate-50 border border-slate-200 rounded-xl p-4">
+            <div className="flex items-center justify-between gap-2 mb-2">
+              <span className="text-xs font-bold text-slate-800">
+                Tujuan Pembelajaran ({semester === 'ALL' ? 'Sem. 1 & 2' : `Semester ${semester}`})
+              </span>
+              <SpeakButton
+                speakId={`setup-tp-${subject.id}-${semester}`}
+                text={relevantObjectives.map((o) => o.goal).join('. ')}
+                label="Dengarkan"
+                compact
+              />
+            </div>
+            <ul className="space-y-1 text-xs text-slate-600 leading-relaxed">
+              {relevantObjectives.slice(0, 3).map((tp) => (
+                <li key={tp.code}>• {tp.goal}</li>
+              ))}
+            </ul>
+          </div>
+
           {/* Topic selection (for Kuis and Duel) */}
-          {mode !== 'sortir' && (
+          {(mode === 'kuis' || mode === 'duel') && (
             <div>
               <label className="block text-sm font-semibold text-slate-800 mb-2.5">
                 3. Pilih Tema / Bab Materi
@@ -231,7 +263,7 @@ export function SubjectSetupModal({
           )}
 
           {/* Timer control */}
-          {mode !== 'sortir' && (
+          {(mode === 'kuis' || mode === 'duel') && (
             <div>
               <label className="flex items-center gap-2 text-sm font-semibold text-slate-800 mb-2.5">
                 <Clock className="w-4 h-4 text-slate-500" aria-hidden="true" />

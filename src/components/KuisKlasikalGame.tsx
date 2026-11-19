@@ -14,7 +14,9 @@ import {
 } from 'lucide-react';
 import { QuizQuestion, SessionConfig, SubjectInfo } from '../types';
 import { QuestionVisual } from './QuestionVisual';
+import { SpeakButton } from './SpeakButton';
 import { soundFX } from '../utils/sound';
+import { ttsEngine } from '../utils/tts';
 
 interface KuisKlasikalGameProps {
   subject: SubjectInfo;
@@ -362,20 +364,28 @@ export function KuisKlasikalGame({
       <div className="mt-5 bg-white border border-slate-200 rounded-2xl p-6 sm:p-8">
         <div className="flex flex-col lg:flex-row items-stretch gap-6">
           <div className="flex-1 flex flex-col justify-center">
-            <div className="flex items-center justify-between gap-3 mb-3">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
               <span className="text-xs font-semibold text-blue-700">
                 Pertanyaan {currentIndex + 1} · {currentQuestion.topic}
               </span>
-              {!fiftyFiftyUsed && !hasAnswered && (
-                <button
-                  type="button"
-                  onClick={handleUseFiftyFifty}
-                  className="ifp-touch-target inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer whitespace-nowrap"
-                >
-                  <Lightbulb className="w-3.5 h-3.5 text-amber-600" aria-hidden="true" />
-                  <span>Bantuan 50:50</span>
-                </button>
-              )}
+              <div className="flex items-center gap-2">
+                <SpeakButton
+                  speakId={`kuis-${currentQuestion.id}`}
+                  text={`${currentQuestion.prompt}. Pilihan A: ${currentQuestion.options[0]}. Pilihan B: ${currentQuestion.options[1]}. Pilihan C: ${currentQuestion.options[2]}. Pilihan D: ${currentQuestion.options[3]}.`}
+                  label="Bacakan Soal"
+                  compact
+                />
+                {!fiftyFiftyUsed && !hasAnswered && (
+                  <button
+                    type="button"
+                    onClick={handleUseFiftyFifty}
+                    className="ifp-touch-target inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-slate-50 text-xs font-semibold text-slate-700 hover:bg-slate-100 cursor-pointer whitespace-nowrap"
+                  >
+                    <Lightbulb className="w-3.5 h-3.5 text-amber-600" aria-hidden="true" />
+                    <span>Bantuan 50:50</span>
+                  </button>
+                )}
+              </div>
             </div>
 
             <h2
