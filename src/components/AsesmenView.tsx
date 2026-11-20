@@ -26,21 +26,34 @@ export function AsesmenView({ subjects, allQuestions }: AsesmenViewProps) {
   const [studentName, setStudentName] = useState('');
   const [subjectId, setSubjectId] = useState<SubjectId>('matematika');
   const [semester, setSemester] = useState<SemesterFilter>(1);
+  const [selectedTopic, setSelectedTopic] = useState<string>('ALL');
+  const [questionCount, setQuestionCount] = useState<10 | 15 | 20 | 30>(10);
   const [assessmentDeck, setAssessmentDeck] = useState<QuizQuestion[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, number>>({});
 
   const activeSubject = subjects.find((s) => s.id === subjectId) || subjects[0];
 
+  const availableTopics = useMemo(() => {
+    if (semester === 1) return activeSubject.topicsBySemester[1];
+    if (semester === 2) return activeSubject.topicsBySemester[2];
+    return [...activeSubject.topicsBySemester[1], ...activeSubject.topicsBySemester[2]];
+  }, [activeSubject, semester]);
+
   const availablePool = useMemo(() => {
     return allQuestions.filter(
-      (q) => q.subjectId === subjectId && (semester === 'ALL' || q.semester === semester)
+      (q) =>
+        q.subjectId === subjectId &&
+        (semester === 'ALL' || q.semester === semester) &&
+        (selectedTopic === 'ALL' || q.topic === selectedTopic)
     );
-  }, [allQuestions, subjectId, semester]);
+  }, [allQuestions, subjectId, semester, selectedTopic]);
 
   const startAssessment = () => {
     soundFX.playClick();
-    const deck = [...availablePool].sort(() => Math.random() - 0.5).slice(0, 10);
+    const deck = [...availablePool]
+      .sort(() => Math.random() - 0.5)
+      .slice(0, Math.min(questionCount, availablePool.length));
     setAssessmentDeck(deck);
     setCurrentIdx(0);
     setSelectedAnswers({});
@@ -114,8 +127,8 @@ export function AsesmenView({ subjects, allQuestions }: AsesmenViewProps) {
               Asesmen Kelas V SD
             </h1>
             <p className="text-sm sm:text-base text-slate-600 mt-2">
-              Uji pemahaman siswa per mata pelajaran dan semester. Setiap soal dilengkapi tombol
-              speaker untuk membantu siswa yang belum lancar membaca, serta rekap nilai otomatis.
+              Uji pemahaman siswa per mata pelajaran, semester, dan tema. Setiap soal dilengkapi
+              tombol speaker untuk membantu siswa yang belum lancar membaca, serta rekap nilai otomatis.
             </p>
           </div>
 
@@ -152,6 +165,7 @@ export function AsesmenView({ subjects, allQuestions }: AsesmenViewProps) {
                     onClick={() => {
                       soundFX.playClick();
                       setSemester(item.val);
+                      setSelectedTopic('ALL');
                     }}
                     className={`ifp-touch-target py-2 px-3 rounded-lg text-xs sm:text-sm font-medium cursor-pointer ${
                       semester === item.val
@@ -178,6 +192,7 @@ export function AsesmenView({ subjects, allQuestions }: AsesmenViewProps) {
                   onClick={() => {
                     soundFX.playClick();
                     setSubjectId(s.id);
+                    setSelectedTopic('ALL');
                   }}
                   className={`ifp-touch-target px-4 py-2.5 rounded-xl text-sm font-medium border cursor-pointer ${
                     subjectId === s.id
@@ -191,11 +206,76 @@ export function AsesmenView({ subjects, allQuestions }: AsesmenViewProps) {
             </div>
           </div>
 
+          <div className="pt-2 border-t border-slate-200">
+            <label className="block text-sm font-semibold text-slate-800 mb-2">
+              Pilih Tema / Bab Materi
+            </label>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  soundFX.playClick();
+                  setSelectedTopic('ALL');
+                }}
+                className={`ifp-touch-target px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium border cursor-pointer whitespace-nowrap ${
+                  selectedTopic === 'ALL'
+                    ? 'bg-slate-900 text-white border-slate-900'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                }`}
+              >
+                Semua Tema
+              </button>
+              {availableTopics.map((topic) => (
+                <button
+                  key={topic}
+                  type="button"
+                  onClick={() => {
+                    soundFX.playClick();
+                    setSelectedTopic(topic);
+                  }}
+                  className={`ifp-touch-target px-3.5 py-2 rounded-xl text-xs sm:text-sm font-medium border cursor-pointer whitespace-nowrap ${
+                    selectedTopic === topic
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  {topic}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="pt-2 border-t border-slate-200">
+            <label className="block text-sm font-semibold text-slate-800 mb-2">
+              Jumlah Soal Asesmen
+            </label>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1 bg-slate-100 rounded-xl">
+              {([10, 15, 20, 30] as const).map((cnt) => (
+                <button
+                  key={cnt}
+                  type="button"
+                  onClick={() => {
+                    soundFX.playClick();
+                    setQuestionCount(cnt);
+                  }}
+                  className={`ifp-touch-target py-2 px-3 rounded-lg text-sm font-medium cursor-pointer whitespace-nowrap ${
+                    questionCount === cnt
+                      ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                      : 'text-slate-600 hover:text-slate-900'
+                  }`}
+                >
+                  {cnt} Soal
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="pt-3 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="text-sm text-slate-600">
               Tersedia <strong className="tabular-nums text-slate-900">{availablePool.length} soal</strong>{' '}
-              untuk {activeSubject.name}{' '}
-              {semester === 'ALL' ? 'Semester 1 & 2' : `Semester ${semester}`}.
+              untuk {activeSubject.name}
+              {selectedTopic !== 'ALL' ? ` · ${selectedTopic}` : ''}{' '}
+              ({semester === 'ALL' ? 'Sem. 1 & 2' : `Semester ${semester}`}).
             </div>
             <button
               type="button"
@@ -203,7 +283,7 @@ export function AsesmenView({ subjects, allQuestions }: AsesmenViewProps) {
               className="ifp-touch-target inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl bg-blue-700 text-white text-sm sm:text-base font-semibold hover:bg-blue-800 cursor-pointer whitespace-nowrap"
             >
               <Play className="w-4 h-4 fill-current" aria-hidden="true" />
-              <span>Mulai Asesmen</span>
+              <span>Mulai Asesmen ({Math.min(questionCount, availablePool.length)} Soal)</span>
             </button>
           </div>
         </div>

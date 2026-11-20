@@ -18,7 +18,9 @@ export function BankSoalView({
 }: BankSoalViewProps) {
   const [filterSubject, setFilterSubject] = useState<SubjectId | 'ALL'>('ALL');
   const [filterSemester, setFilterSemester] = useState<SemesterFilter>('ALL');
+  const [filterTopic, setFilterTopic] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [visibleCount, setVisibleCount] = useState(30);
   const [showAddForm, setShowAddForm] = useState(false);
 
   // Add form state
@@ -81,15 +83,29 @@ export function BankSoalView({
     setFilterSemester(semester);
   };
 
+  const availableFilterTopics =
+    filterSubject === 'ALL'
+      ? []
+      : (() => {
+          const info = subjects.find((s) => s.id === filterSubject);
+          if (!info) return [];
+          if (filterSemester === 1) return info.topicsBySemester[1];
+          if (filterSemester === 2) return info.topicsBySemester[2];
+          return [...info.topicsBySemester[1], ...info.topicsBySemester[2]];
+        })();
+
   const filteredQuestions = questions.filter((q) => {
     const matchSubject = filterSubject === 'ALL' || q.subjectId === filterSubject;
     const matchSemester = filterSemester === 'ALL' || q.semester === filterSemester;
+    const matchTopic = filterTopic === 'ALL' || q.topic === filterTopic;
     const matchSearch =
       !searchQuery.trim() ||
       q.prompt.toLowerCase().includes(searchQuery.toLowerCase()) ||
       q.topic.toLowerCase().includes(searchQuery.toLowerCase());
-    return matchSubject && matchSemester && matchSearch;
+    return matchSubject && matchSemester && matchTopic && matchSearch;
   });
+
+  const displayedQuestions = filteredQuestions.slice(0, visibleCount);
 
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8">
@@ -264,6 +280,8 @@ export function BankSoalView({
               onClick={() => {
                 soundFX.playClick();
                 setFilterSubject('ALL');
+                setFilterTopic('ALL');
+                setVisibleCount(30);
               }}
               className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
                 filterSubject === 'ALL'
@@ -282,6 +300,8 @@ export function BankSoalView({
                   onClick={() => {
                     soundFX.playClick();
                     setFilterSubject(s.id);
+                    setFilterTopic('ALL');
+                    setVisibleCount(30);
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
                     filterSubject === s.id
@@ -310,6 +330,8 @@ export function BankSoalView({
                   onClick={() => {
                     soundFX.playClick();
                     setFilterSemester(sem.value);
+                    setFilterTopic('ALL');
+                    setVisibleCount(30);
                   }}
                   className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap cursor-pointer ${
                     filterSemester === sem.value
@@ -331,22 +353,75 @@ export function BankSoalView({
                 type="search"
                 placeholder="Cari pertanyaan atau tema..."
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setVisibleCount(30);
+                }}
                 className="w-full pl-9 pr-3 py-2 rounded-lg border border-slate-200 bg-white text-sm text-slate-900 focus:outline-none focus:border-blue-600"
               />
             </div>
           </div>
         </div>
+
+        {availableFilterTopics.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => {
+                soundFX.playClick();
+                setFilterTopic('ALL');
+                setVisibleCount(30);
+              }}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium border cursor-pointer whitespace-nowrap ${
+                filterTopic === 'ALL'
+                  ? 'bg-slate-900 text-white border-slate-900'
+                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+              }`}
+            >
+              Semua Tema
+            </button>
+            {availableFilterTopics.map((t) => {
+              const tCount = questions.filter(
+                (q) =>
+                  q.subjectId === filterSubject &&
+                  (filterSemester === 'ALL' || q.semester === filterSemester) &&
+                  q.topic === t
+              ).length;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => {
+                    soundFX.playClick();
+                    setFilterTopic(t);
+                    setVisibleCount(30);
+                  }}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium border cursor-pointer whitespace-nowrap ${
+                    filterTopic === t
+                      ? 'bg-slate-900 text-white border-slate-900'
+                      : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                  }`}
+                >
+                  {t} ({tCount})
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Question List */}
       <div className="mt-5 space-y-3">
+        <div className="text-xs text-slate-500 tabular-nums">
+          Menampilkan <strong className="text-slate-800">{displayedQuestions.length}</strong> dari{' '}
+          <strong className="text-slate-800">{filteredQuestions.length}</strong> soal terpilih
+        </div>
         {filteredQuestions.length === 0 ? (
           <div className="bg-white border border-slate-200 rounded-2xl p-10 text-center text-sm text-slate-500">
             Tidak ada soal yang cocok dengan filter pencarian.
           </div>
         ) : (
-          filteredQuestions.map((q, index) => {
+          displayedQuestions.map((q, index) => {
             const subj = subjects.find((s) => s.id === q.subjectId);
             return (
               <div
@@ -409,6 +484,21 @@ export function BankSoalView({
               </div>
             );
           })
+        )}
+
+        {displayedQuestions.length < filteredQuestions.length && (
+          <div className="pt-3 flex justify-center">
+            <button
+              type="button"
+              onClick={() => {
+                soundFX.playClick();
+                setVisibleCount((c) => c + 30);
+              }}
+              className="ifp-touch-target px-6 py-2.5 rounded-xl border border-slate-300 bg-white text-sm font-semibold text-slate-800 hover:bg-slate-50 cursor-pointer"
+            >
+              Tampilkan 30 Soal Berikutnya ({filteredQuestions.length - displayedQuestions.length} tersisa)
+            </button>
+          </div>
         )}
       </div>
     </div>

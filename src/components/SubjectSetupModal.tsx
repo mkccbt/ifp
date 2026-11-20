@@ -28,6 +28,7 @@ export function SubjectSetupModal({
   const [selectedTopic, setSelectedTopic] = useState<string>('ALL');
   const [mode, setMode] = useState<GameMode>(initialMode);
   const [timerSeconds, setTimerSeconds] = useState<TimerOption>(defaultTimer);
+  const [questionCount, setQuestionCount] = useState<10 | 15 | 20 | 30>(10);
   const [teamRedName, setTeamRedName] = useState('Tim Merah');
   const [teamBlueName, setTeamBlueName] = useState('Tim Biru');
 
@@ -76,9 +77,16 @@ export function SubjectSetupModal({
     { value: 45, label: '45 Detik' },
   ];
 
+  const questionCountOptions = [10, 15, 20, 30] as const;
+
   const filteredBySemester = subjectQuestions.filter(
     (q) => semester === 'ALL' || q.semester === semester
   );
+
+  const filteredPoolCount =
+    selectedTopic === 'ALL'
+      ? filteredBySemester.length
+      : filteredBySemester.filter((q) => q.topic === selectedTopic).length;
 
   const availableTopics =
     semester === 1
@@ -107,7 +115,7 @@ export function SubjectSetupModal({
       timerSeconds,
       teamRedName: teamRedName.trim() || 'Tim Merah',
       teamBlueName: teamBlueName.trim() || 'Tim Biru',
-      questionCount: 10,
+      questionCount: Math.min(questionCount, Math.max(1, filteredPoolCount)),
     });
   };
 
@@ -241,23 +249,26 @@ export function SubjectSetupModal({
                 >
                   Semua Tema ({filteredBySemester.length} Soal)
                 </button>
-                {availableTopics.map((topic) => (
-                  <button
-                    key={topic}
-                    type="button"
-                    onClick={() => {
-                      soundFX.playClick();
-                      setSelectedTopic(topic);
-                    }}
-                    className={`ifp-touch-target px-4 py-2 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap cursor-pointer ${
-                      selectedTopic === topic
-                        ? 'bg-slate-900 text-white border-slate-900'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
-                    }`}
-                  >
-                    {topic}
-                  </button>
-                ))}
+                {availableTopics.map((topic) => {
+                  const topicCount = filteredBySemester.filter((q) => q.topic === topic).length;
+                  return (
+                    <button
+                      key={topic}
+                      type="button"
+                      onClick={() => {
+                        soundFX.playClick();
+                        setSelectedTopic(topic);
+                      }}
+                      className={`ifp-touch-target px-4 py-2 rounded-lg text-sm font-medium border transition-colors whitespace-nowrap cursor-pointer ${
+                        selectedTopic === topic
+                          ? 'bg-slate-900 text-white border-slate-900'
+                          : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50'
+                      }`}
+                    >
+                      {topic} ({topicCount})
+                    </button>
+                  );
+                })}
               </div>
             </div>
           )}
@@ -285,6 +296,34 @@ export function SubjectSetupModal({
                     }`}
                   >
                     {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Question count control */}
+          {(mode === 'kuis' || mode === 'duel') && (
+            <div>
+              <label className="block text-sm font-semibold text-slate-800 mb-2.5">
+                5. Jumlah Soal Dimainkan ({filteredPoolCount} tersedia)
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-1 bg-slate-100 rounded-xl">
+                {questionCountOptions.map((cnt) => (
+                  <button
+                    key={cnt}
+                    type="button"
+                    onClick={() => {
+                      soundFX.playClick();
+                      setQuestionCount(cnt);
+                    }}
+                    className={`ifp-touch-target py-2 px-3 rounded-lg text-sm font-medium transition-all whitespace-nowrap cursor-pointer ${
+                      questionCount === cnt
+                        ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                        : 'text-slate-600 hover:text-slate-900'
+                    }`}
+                  >
+                    {cnt} Soal
                   </button>
                 ))}
               </div>
